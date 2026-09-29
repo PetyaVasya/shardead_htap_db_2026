@@ -6,3 +6,7 @@
 - ACID
 - WAL
 - MVCC
+
+## Architecture docs
+
+See [`docs/`](docs/) for C4, class diagram, topology, and write-path sequences.
