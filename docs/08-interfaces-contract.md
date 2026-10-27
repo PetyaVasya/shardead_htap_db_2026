@@ -82,6 +82,24 @@ ScanSpecification.builder(table)
 - **`xid` сохраняется.** `LogicalChange.xid` на slave применяется с тем же значением, что на leader — упрощает отладку.
 - **LSN в `LogicalChange`.** Каждая реплицируемая пачка несёт `lsn` leader'а. Slave хранит `appliedLsn` — последнюю применённую. При переподключении slave сообщает `appliedLsn`, leader зовёт `catchUp(slave, appliedLsn)` — досылает всё с `lsn > appliedLsn`.
 
+## REST / HTTP entry
+
+- **Тонкий адаптер поверх `Gateway`.** `RestServer` принимает HTTP-запрос, парсит, зовёт `gateway.execute(sql)`, сериализует `RowCursor` в JSON. Никакой бизнес-логики.
+- **Endpoint `POST /sql`:**
+  - `Content-Type: text/plain` (тело — SQL-текст, одна statement).
+  - Ответ `200 application/json`:
+    ```json
+    { "columns": ["id","name"], "rows": [[1,"alice"],[2,"bob"]], "rowsAffected": 2 }
+    ```
+    Для DDL/DML `columns=[]`, `rows=[]`, `rowsAffected` — число изменённых строк (0 для DDL).
+  - Ответ `400 application/json` при ошибке:
+    ```json
+    { "error": "parse error at line 1" }
+    ```
+- **Streaming — не MVP.** Весь результат материализуется в памяти перед отправкой. Для больших `scan` — NDJSON позже.
+- **Auth — не MVP.** Любой может стучаться. HTTPS/токены — отдельный слой.
+- **Thread-model:** HTTP server держит thread pool, каждый запрос — отдельная implicit txn через Gateway. Параллелизм на уровне HybridStorage.
+
 ## Cluster / Shard / Shared-nothing
 
 - **`shardKeyIndex` обязателен в `Schema`.** Для single-node ставить `shardKeyIndex = pkIndex`.
