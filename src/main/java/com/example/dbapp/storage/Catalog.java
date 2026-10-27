@@ -12,6 +12,4 @@ public interface Catalog {
     Schema schema(TableId table);
 
     Iterable<TableId> tables();
-
-    long rowCount(TableId table);
 }
